@@ -5,8 +5,6 @@
 
 void read_order(int* order,
 		int my_rank, MPI_Comm comm);
-void read_two_vectors(double local_vec_x[], double local_vec_y[], int local_order,
-		      int my_rank, int comm_sz, MPI_Comm comm);
 void read_vector(double local_vec_x[], double local_vec_y[], int order, int local_order,
 		 int my_rank, int comm_sz, MPI_Comm comm);
 void print_vector(double local_vec[], int local_order, int order, char title[],
@@ -69,33 +67,6 @@ void read_order(int* order, int my_rank, MPI_Comm comm) {
   MPI_Bcast(order, 1, MPI_INT, 0, comm);
 }
 
-void read_two_vectors(double local_vec_x[], double local_vec_y[], int local_order,
-		      int my_rank, int comm_sz, MPI_Comm comm) {
-  double* user_input = NULL;
-  int i;
-  
-  if(my_rank == 0) {
-    user_input = malloc(local_order * comm_sz * sizeof(double) );
-    
-    printf("Enter the first Vector:\n");
-    for(i = 0; i < local_order * comm_sz; i++) {
-      scanf("%lf", &user_input[i] );
-    }
-    MPI_Scatter(user_input, local_order, MPI_DOUBLE, local_vec_x, local_order, MPI_DOUBLE, 0, comm);
-
-    printf("Enter the second Vector:\n");
-    for(i = 0; i < local_order * comm_sz; i++) {
-      scanf("%lf", &user_input[i] );
-    }
-    MPI_Scatter(user_input, local_order, MPI_DOUBLE, local_vec_y, local_order, MPI_DOUBLE, 0, comm);
-    
-    free(user_input);
-  } else {
-    MPI_Scatter(user_input, local_order, MPI_DOUBLE, local_vec_x, local_order, MPI_DOUBLE, 0, comm);
-    MPI_Scatter(user_input, local_order, MPI_DOUBLE, local_vec_y, local_order, MPI_DOUBLE, 0, comm);
-  }
-}
-
 void build_mpi_contiguous_type(int order, MPI_Datatype* input_mpi_t) {
   
   MPI_Type_contiguous(order, MPI_DOUBLE, input_mpi_t);
@@ -137,11 +108,14 @@ void read_vector(double local_vec_x[], double local_vec_y[], int order, int loca
 void print_vector(double local_vec[], int local_order, int order, char title[],
 		  int my_rank, MPI_Comm comm) {
   double * vector = NULL;
+  MPI_Datatype input_mpi_t;
   int i;
+
+  build_mpi_contiguous_type(local_order, &input_mpi_t);
 
   if(my_rank == 0) {
     vector = malloc(order * sizeof(double) );
-    MPI_Gather(local_vec, local_order, MPI_DOUBLE, vector, local_order, MPI_DOUBLE, 0, comm);
+    MPI_Gather(local_vec, 1, input_mpi_t, vector, 1, input_mpi_t, 0, comm);
     printf("\n%s\n", title);
     printf("[ ");
     for(i = 0; i < order; i++) {
@@ -150,7 +124,7 @@ void print_vector(double local_vec[], int local_order, int order, char title[],
     printf("]\n");
     free(vector);
   } else {
-    MPI_Gather(local_vec, local_order, MPI_DOUBLE, vector, local_order, MPI_DOUBLE, 0, comm);
+    MPI_Gather(local_vec, 1, input_mpi_t, vector, 1, input_mpi_t, 0, comm);
   }
 }
 
