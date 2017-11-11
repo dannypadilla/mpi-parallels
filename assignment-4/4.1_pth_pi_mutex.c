@@ -7,34 +7,50 @@
 const int MAX_THREADS = 1024;
 
 void* Thread_sum(void* rank);
-/* Only executed by main thread */
-void Get_args(int argc, char* argv[]);
+void Get_args(int argc, char* argv[]); /* Only executed by main thread */
 void Usage(char* prog_name);
 double Serial_pi(long long n);
 
 long thread_count;
 long long n;
-double sum = 0;
+double sum, sum_serial;
 pthread_mutex_t mutex;
 
 int main(int argc, char* argv[]) {
   long       thread;  /* Use long in case of a 64-bit system */
   pthread_t* thread_handles;
-  double start, finish, elapsed; // for time
+  double start, finish, elapsed; // for timer
 
-  /* Get number of threads from command line */
-  Get_args(argc, argv);
-
+  Get_args(argc, argv); /* Get number of threads from command line */
   thread_handles = malloc(thread_count * sizeof(pthread_t) );
+  
+  pthread_mutex_init(&mutex, NULL); // init mutex
 
+  sum = 0.0;
+  // parallel run
+  GET_TIME(start);
   for(thread = 0; thread < thread_count; thread++) {
-    pthread_create(&thread_handles[thread], NULL, Thread_sum, (void) thread);
+    pthread_create(&thread_handles[thread], NULL, Thread_sum, (void*) thread);
   }
-
   for(thread = 0; thread < thread_count; thread++) {
-    pthread_join(&thread_handles[thread], NULL);
+    pthread_join(thread_handles[thread], NULL);
   }
+  GET_TIME(finish);
+  
+  sum = sum * 4;
+  printf("\nPthread pi estimation: %.12lf\n", sum);
+  elapsed = finish - start;
+  printf("The code to be timed took %e seconds\n", elapsed);
 
+  // serial run
+  GET_TIME(start);
+  sum_serial = Serial_pi(n);
+  GET_TIME(finish);
+  printf("\nSerial pi estimation:  %.12lf\n", sum_serial);
+  elapsed = finish - start;
+  printf("The code to be timed took %e seconds\n\n", elapsed);
+
+  pthread_mutex_destroy(&mutex); // destroy mutex
   free(thread_handles);
 
   return 0;
@@ -42,17 +58,21 @@ int main(int argc, char* argv[]) {
 
 /*------------------------------------------------------------------*/
 void* Thread_sum(void* rank) {
-
   long my_rank = (long) rank;
 
-  double my_sum = 0.0;
   long long i;
   double factor = 1.0;
+  long long my_n = n / thread_count;
   long long my_first_i = my_n * my_rank;
   long long my_last_i = my_first_i + my_n;
 
-  for (i = my_first_i; i < my_last_i; i++, factor = -factor) {
+  if(my_first_i % 2 == 0) {
+    factor = 1.0;
+  } else {
+    factor = -1.0;
+  }
 
+  for (i = my_first_i; i < my_last_i; i++, factor = -factor) {
     pthread_mutex_lock(&mutex);
     sum += factor / (2 * i + 1);
     pthread_mutex_unlock(&mutex);
