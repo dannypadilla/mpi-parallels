@@ -7,35 +7,94 @@
 
 const int MAX_THREADS = 1024;
 
-long thread_count;
-long long n;
-double sum;
-
-sem_t sem;
-
 void* Thread_sum(void* rank);
-
-/* Only executed by main thread */
-void Get_args(int argc, char* argv[]);
+void Get_args(int argc, char* argv[]); /* Only executed by main thread */
 void Usage(char* prog_name);
 double Serial_pi(long long n);
 
+// GLOBAL VARIABLES
+long thread_count;
+long long n;
+double sum, sum_serial;
+int i;
+
+sem_t* sem;
+
 int main(int argc, char* argv[]) {
-   long       thread;  /* Use long in case of a 64-bit system */
-   pthread_t* thread_handles;
-   double start, finish, elapsed;
+  long       thread;  /* Use long in case of a 64-bit system */
+  pthread_t* thread_handles;
+  double start, finish, elapsed;
+  
+  Get_args(argc, argv); /* Get number of threads from command line */
+  thread_handles = malloc(thread_count * sizeof(pthread_t) );
+  sem = malloc(thread_count * sizeof(sem_t) );
+  
+  for(thread = 0; thread < thread_count; thread++) {
+    sem_init(&sem[thread], 0, 0); // init to locked
+  }
+  
+  sum = 0.0;
+  // parallel run
+  GET_TIME(start);
+  for(thread = 0; thread < thread_count; thread++) {
+    pthread_create(&thread_handles[thread], NULL, Thread_sum, (void*) thread);
+  }
+  for(thread = 0; thread < thread_count; thread++) {
+    pthread_join(thread_handles[thread], NULL);
+  }
+  GET_TIME(finish);
+  
+  printf("\nSemaphore pi estimation: %.12lf\n", sum * 4);
+  elapsed = finish - start;
+  printf("The code to be timed took %e seconds\n", elapsed);
 
-   /* Get number of threads from command line */
-   Get_args(argc, argv);
+  // serial run
+  GET_TIME(start);
+  sum_serial = Serial_pi(n);
+  GET_TIME(finish);
+  
+  printf("\nSerial pi estimation:  %.12lf\n", sum_serial);
+  elapsed = finish - start;
+  printf("The code to be timed took %e seconds\n\n", elapsed);
 
+  for(thread = 0; thread < thread_count; thread++) {
+    sem_destroy(&sem[thread]); // free each semaphore separately
+  }
+  free(thread_handles);
+  free(sem);
 
-   return 0;
+  return 0;
 }  /* main */
 
 /*------------------------------------------------------------------*/
 void* Thread_sum(void* rank) {
+  long my_rank = (long) rank;
 
-   return NULL;
+  long long i;
+  double factor = 1.0;
+  long my_sum;
+  long long my_n = n / thread_count;
+  long long my_first_i = my_n * my_rank;
+  long long my_last_i = my_first_i + my_n;
+
+  my_sum = 0.0;
+  if(my_first_i % 2 == 0) {
+    factor = 1.0;
+  } else {
+    factor = -1.0;
+  }
+
+  for (i = my_first_i; i < my_last_i; i++, factor = -factor) {
+    sem_post(&sem[my_rank]); // before
+    sum += factor / (2 * i + 1);
+    sem_wait(&sem[my_rank]); // after
+  }
+
+  /* sem_post(&sem[my_rank]); // before */
+  /* sum += my_sum; */
+  /* sem_wait(&sem[my_rank]); // after */
+  
+  return NULL;
 }  /* Thread_sum */
 
 /*------------------------------------------------------------------
