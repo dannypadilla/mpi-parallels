@@ -27,6 +27,7 @@ int main(int argc, char* argv[] ) {
   thread_handles = malloc(thread_count * sizeof(pthread_t) );
   messages = malloc(thread_count * sizeof(char*) );
 
+  pthread_mutex_init(&mutex, NULL);
   message_available = 0;
   consumer = 0; // thread 0 is the consumer
 
