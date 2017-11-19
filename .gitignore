@@ -1,0 +1,18 @@
+# osx
+.DS_Store
+._.DS_Store
+*.fuse_*
+
+# emacs
+# -*- mode: gitignore; -*-
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# clang
+*.dSYM/
