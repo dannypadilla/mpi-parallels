@@ -20,7 +20,7 @@ void usage(char* prog_name);
 
 // GLOBAL VARIABLES
 long thread_count;
-int message_available; // flag
+int* message_available; // flag
 char** messages;
 pthread_mutex_t mutex;
 
@@ -29,15 +29,20 @@ int main(int argc, char* argv[] ) {
   pthread_t* thread_handles;
 
   get_args(argc, argv);
-  // allocate resources
+  // allocate resources  
   thread_handles = malloc(thread_count * sizeof(pthread_t) );
   messages = malloc(thread_count * sizeof(char*) );
   for(thread = 0; thread < thread_count; thread++) {
     messages[thread] = NULL;
   }
+  
+  message_available = malloc(thread_count * sizeof(int) );
+  for(thread = 0; thread < thread_count; thread++) {
+    message_available[thread] = 0;
+  }
 
   pthread_mutex_init(&mutex, NULL); // init mutex
-  message_available = 0;
+  //message_available = 0;
 
   for(thread = 0; thread < thread_count; thread++) {
     pthread_create(&thread_handles[thread], NULL, send_msg, (void*) thread);
@@ -64,24 +69,25 @@ int main(int argc, char* argv[] ) {
 void* send_msg(void* rank) {
   long my_rank = (long) rank;
   long dest = (my_rank + 1) % thread_count;
-  //char* my_msg = malloc(MSG_MAX * sizeof(char) );
+  char* my_msg = malloc(MSG_MAX * sizeof(char) );
+  //int local_msg_avail;
 
   while(1) {
     pthread_mutex_lock(&mutex); // shared mutex
-    if(message_available == 0) { // consumers
-      //printf("Consumer thread %ld message: %s\n", my_rank, messages[my_rank] ); // print message
-      printf("Hello from CONSUMER thread %ld\n", my_rank);
-      message_available = 1; // msg ready
-      pthread_mutex_unlock(&mutex);
-      break;
-    } else { // producer
-      //sprintf(my_msg, "Hello to %ld from producer thread %ld", dest, my_rank); // create message
-      printf("Hello to %ld from PRODUCER thread %ld\n", dest, my_rank);
-      //messages[dest] = my_msg;
-      message_available = 0; // reset
+    if(message_available[my_rank]) { // consumer
+      printf("CONSUMER thread %ld message: %s\n", my_rank, messages[my_rank] ); // print message
+      //message_available[my_rank] = 0; // flag
       pthread_mutex_unlock(&mutex);
       break;
     }
+    if(message_available[dest] == 0){ // producer
+      sprintf(my_msg, "Message from PRODUCER thread %ld", my_rank); // create message
+      messages[dest] = my_msg;
+      message_available[dest] = 1; // reset
+      pthread_mutex_unlock(&mutex);
+      break;
+    }
+    //pthread_mutex_unlock(&mutex);
   }
   return NULL;
 }
@@ -100,3 +106,4 @@ void usage(char* prog_name) {
   fprintf(stderr, "usage: %s <number of threads>\n", prog_name);
   exit(0);
 }
+ 

@@ -28,7 +28,7 @@ int main(int argc, char* argv[] ) {
   messages = malloc(thread_count * sizeof(char*) );
 
   pthread_mutex_init(&mutex, NULL);
-  message_available = 0;
+  message_available = 0; // false
   consumer = 0; // thread 0 is the consumer
 
   for(thread = 0; thread < thread_count; thread++) {
@@ -57,14 +57,16 @@ void* send_msg(void* rank) {
 
   while(1) {
     pthread_mutex_lock(&mutex); // shared mutex
-    if(my_rank == consumer) {
+    if(my_rank == consumer) { // thread 0 is the consumer
       if(message_available) {
-	printf("Consumer thread %ld message: %s\n", my_rank, messages[my_rank] ); // print message
+	printf("CONSUMER thread %ld message: \"%s\"\n", my_rank, messages[my_rank] ); // print message
+	//printf("COMSUMER thread %ld here\n", my_rank);
 	pthread_mutex_unlock(&mutex);
 	break;
       }
     } else {
-      sprintf(my_msg, "Hello to %ld from producer thread %ld", dest, my_rank); // create message
+      sprintf(my_msg, "Hello to consumer thread %ld from PRODUCER thread %ld", dest, my_rank); // create message
+      //printf("Message from PRODUCER thread %ld\n", my_rank);
       messages[dest] = my_msg;
       message_available = 1;
       pthread_mutex_unlock(&mutex);
