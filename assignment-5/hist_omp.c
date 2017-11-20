@@ -62,9 +62,9 @@ int main(int argc, char* argv[] ) {
   
   int bin;
 # pragma omp parallel num_threads(thread_count)
-  for(i = 0; i < local_data_count; i++) {
-    bin = find_bin(local_data[i], bin_maxes, bin_count, min_meas); // find which bin data[i] belongs to
-    local_bin_counts[bin]++;
+  for(i = 0; i < data_count; i++) {
+    bin = find_bin(data[i], bin_maxes, bin_count, min_meas); // find which bin data[i] belongs to
+    bin_counts[bin]++;
   }
 
 /* Gather print the data */    
