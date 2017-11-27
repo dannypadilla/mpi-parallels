@@ -36,6 +36,7 @@ int thread_count; // b
 int number_of_tasks; // a
 
 int list_len = 20;
+
 int member_val = 0;
 int insert_val = 1;
 int delete_val = 2;
@@ -115,6 +116,11 @@ void* do_task(void* rank) {
       pthread_rwlock_wrlock(&rwlock);
       delete(random_node);
       pthread_rwlock_unlock(&rwlock);
+      if(random_node % 2 == 0) {
+	pthread_rwlock_wrlock(&rwlock);
+	delete(random_node);
+	pthread_rwlock_unlock(&rwlock);
+      }
     }
   }
 
@@ -192,8 +198,10 @@ int delete(int value) {
 #        endif
          free(curr);
       }
+      printf("DELETE on NODE %d WAS A SUCCESS!\n", value);
    } else { /* Not in list */
       rv = 0;
+      printf("DELETE on NODE %d FAILED!\n", value);
    }
 
    return rv;
